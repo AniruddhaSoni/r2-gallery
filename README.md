@@ -1,4 +1,4 @@
-# R2 Gallery
+# R2 Gallery (Easyrecovery File Manager)
 
 ![R2 Gallery Demo](https://raw.githubusercontent.com/sjackp/r2-gallery/main/demos.gif)
 
@@ -11,11 +11,16 @@ This project is dev-first and self-hosted. It's reasonably secure for personal u
 
 ## Features
 
-- Browse folders and objects
-- Upload (presigned and direct)
+- **Authentication** — NextAuth-based login with username/password
+- Browse folders and objects in list view
+- **Bulk upload** with progress tracking (optimized for thousands of files)
+- **Bulk delete** with progress indicator
+- Upload collision detection (skip, rename, or overwrite)
 - Delete and copy links
 - Preview images/videos when possible
 - One-click downloads (forced save via same-origin endpoint)
+- **Keyboard shortcuts**: Ctrl+A (select all), Delete (delete selected), Escape (clear selection)
+- File count display with pagination
 
 ## Quickstart (local)
 
@@ -34,6 +39,7 @@ Open `http://localhost:3423`.
 
 Environment variables (see `env.example`):
 
+### Cloudflare R2
 - `CLOUDFLARE_ACCOUNT_ID` (required) — your Cloudflare account ID
 - `CLOUDFLARE_ACCESS_KEY` (required) — R2 access key
 - `CLOUDFLARE_SECRET_ACCESS_KEY` (required) — R2 secret access key
@@ -41,6 +47,13 @@ Environment variables (see `env.example`):
 - `CLOUDFLARE_REGION` (optional, default `auto`) — often `auto` for R2
 - `CLOUDFLARE_BUCKET_URL` (optional) — public base URL for direct links
 - `URL_TTL_SECONDS` (optional, default `900`) — signed URL expiry
+
+### Authentication
+- `AUTH_SECRET` (required) — NextAuth secret, generate with `npx auth secret`
+- `BASIC_AUTH_USER` (required) — login username
+- `BASIC_AUTH_PASSWORD` (required) — login password
+
+### API
 - `APP_PASSWORD` (required) — bearer token enforced by `/api/*` middleware
 - `NEXT_PUBLIC_APP_PASSWORD` (optional) — dev convenience to call APIs from the browser
 - `NEXT_PUBLIC_THUMBNAIL_URL` (optional) — public URL to your thumbnail Worker endpoint (e.g., `https://thumbs.example.com/thumb`)
