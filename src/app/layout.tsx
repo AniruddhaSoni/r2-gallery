@@ -1,12 +1,12 @@
-import './globals.css';
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import "./globals.css";
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'R2 Gallery',
-  description: 'A minimalist, Apple-inspired web UI to manage a Cloudflare R2 bucket.',
+  title: "Easyrecovery File Manager",
+  description: "Easyrecovery File Manager - LRN Management System",
 };
 
 export default function RootLayout({
@@ -16,7 +16,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`min-h-screen bg-[#F8F9FB] text-gray-900 antialiased ${inter.className}`}>
+      <body
+        className={`min-h-screen bg-[#F8F9FB] text-gray-900 antialiased ${inter.className}`}
+      >
         {children}
       </body>
     </html>

@@ -1,46 +1,89 @@
-import { S3Client, ListObjectsV2Command, PutObjectCommand, GetObjectCommand, DeleteObjectsCommand, CopyObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import {
+  S3Client,
+  ListObjectsV2Command,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectsCommand,
+  CopyObjectCommand,
+  HeadObjectCommand,
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { NodeHttpHandler } from "@smithy/node-http-handler";
+import https from "https";
 
 const R2_ENDPOINT = `https://${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`;
 
+// Create a custom HTTP agent with increased socket limits for handling bulk operations
+const httpsAgent = new https.Agent({
+  maxSockets: 200, // Increase from default 50
+  keepAlive: true,
+  keepAliveMsecs: 1000,
+});
+
 export const s3Client = new S3Client({
-  region: process.env.CLOUDFLARE_REGION || 'auto',
+  region: process.env.CLOUDFLARE_REGION || "auto",
   endpoint: R2_ENDPOINT,
   credentials: {
     accessKeyId: process.env.CLOUDFLARE_ACCESS_KEY!,
     secretAccessKey: process.env.CLOUDFLARE_SECRET_ACCESS_KEY!,
   },
+  requestHandler: new NodeHttpHandler({
+    httpsAgent,
+    connectionTimeout: 5000,
+    socketTimeout: 30000,
+  }),
 });
 
-console.log('S3 Client Configured:', { 
-  region: process.env.CLOUDFLARE_REGION || 'auto',
+console.log("S3 Client Configured:", {
+  region: process.env.CLOUDFLARE_REGION || "auto",
   endpoint: R2_ENDPOINT,
-  accessKeyId: process.env.CLOUDFLARE_ACCESS_KEY ? 'Loaded' : 'Not Loaded',
-  secretAccessKey: process.env.CLOUDFLARE_SECRET_ACCESS_KEY ? 'Loaded' : 'Not Loaded',
+  accessKeyId: process.env.CLOUDFLARE_ACCESS_KEY ? "Loaded" : "Not Loaded",
+  secretAccessKey: process.env.CLOUDFLARE_SECRET_ACCESS_KEY
+    ? "Loaded"
+    : "Not Loaded",
 });
 
-export async function listObjects(prefix?: string, continuationToken?: string, maxKeys?: number, useDelimiter: boolean = true) {
+export async function listObjects(
+  prefix?: string,
+  continuationToken?: string,
+  maxKeys?: number,
+  useDelimiter: boolean = true
+) {
   const command = new ListObjectsV2Command({
     Bucket: process.env.CLOUDFLARE_BUCKETNAME!,
     Prefix: prefix,
     ContinuationToken: continuationToken,
-    Delimiter: useDelimiter ? '/' : undefined,
+    Delimiter: useDelimiter ? "/" : undefined,
     MaxKeys: maxKeys,
   });
 
-  console.log('Listing objects with prefix:', prefix, 'and continuation token:', continuationToken);
+  console.log(
+    "Listing objects with prefix:",
+    prefix,
+    "and continuation token:",
+    continuationToken
+  );
 
   try {
     const result = await s3Client.send(command);
-    console.log('Successfully listed objects:', result.Contents?.length || 0, 'objects found. Folders:', result.CommonPrefixes?.length || 0);
+    console.log(
+      "Successfully listed objects:",
+      result.Contents?.length || 0,
+      "objects found. Folders:",
+      result.CommonPrefixes?.length || 0
+    );
     return result;
   } catch (error) {
-    console.error('Error listing objects:', error);
+    console.error("Error listing objects:", error);
     throw error;
   }
 }
 
-export async function presignPut(key: string, contentType: string, contentLength: number) {
+export async function presignPut(
+  key: string,
+  contentType: string,
+  contentLength: number
+) {
   const command = new PutObjectCommand({
     Bucket: process.env.CLOUDFLARE_BUCKETNAME!,
     Key: key,
@@ -48,7 +91,9 @@ export async function presignPut(key: string, contentType: string, contentLength
     ContentLength: contentLength,
   });
 
-  const expiresIn = process.env.URL_TTL_SECONDS ? parseInt(process.env.URL_TTL_SECONDS) : 900;
+  const expiresIn = process.env.URL_TTL_SECONDS
+    ? parseInt(process.env.URL_TTL_SECONDS)
+    : 900;
 
   return getSignedUrl(s3Client, command, { expiresIn });
 }
@@ -59,7 +104,9 @@ export async function presignGet(key: string) {
     Key: key,
   });
 
-  const expiresIn = process.env.URL_TTL_SECONDS ? parseInt(process.env.URL_TTL_SECONDS) : 900;
+  const expiresIn = process.env.URL_TTL_SECONDS
+    ? parseInt(process.env.URL_TTL_SECONDS)
+    : 900;
 
   return getSignedUrl(s3Client, command, { expiresIn });
 }
@@ -68,8 +115,8 @@ export async function deleteObjects(keys: string[]) {
   const command = new DeleteObjectsCommand({
     Bucket: process.env.CLOUDFLARE_BUCKETNAME!,
     Delete: {
-      Objects: keys.map(key => ({ Key: key }))
-    }
+      Objects: keys.map((key) => ({ Key: key })),
+    },
   });
 
   return s3Client.send(command);
@@ -96,7 +143,7 @@ export async function objectExists(key: string): Promise<boolean> {
   } catch (err: any) {
     if (err?.$metadata?.httpStatusCode === 404) return false;
     // Some providers return generic errors for missing objects; treat 404/NotFound specially
-    if (err?.name === 'NotFound' || err?.Code === 'NotFound') return false;
+    if (err?.name === "NotFound" || err?.Code === "NotFound") return false;
     return false; // Default to not existing to be conservative for Phase 1
   }
 }

@@ -1,30 +1,36 @@
 "use client";
 
-import { GalleryGrid } from '@/components/GalleryGrid';
-import { Sidebar } from '@/components/Sidebar';
-import { Header } from '@/components/Header';
-import { BulkActions } from '@/components/BulkActions';
-import BulkLinksModal from '@/components/BulkLinksModal';
-import { useObjectStore } from '@/hooks/useObjectStore';
-import { useEffect } from 'react';
-import UploadManager from '@/components/UploadManager';
+import { GalleryGrid } from "@/components/GalleryGrid";
+import { Sidebar } from "@/components/Sidebar";
+import { Header } from "@/components/Header";
+import { BulkActions } from "@/components/BulkActions";
+import BulkLinksModal from "@/components/BulkLinksModal";
+import { useObjectStore } from "@/hooks/useObjectStore";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { useEffect } from "react";
+import UploadManager from "@/components/UploadManager";
+import DeleteProgress from "@/components/DeleteProgress";
 
 export default function Home() {
-  const { linksModalOpen, modalLinks, hideLinksModal, setCurrentPrefix } = useObjectStore();
+  const { linksModalOpen, modalLinks, hideLinksModal, setCurrentPrefix } =
+    useObjectStore();
+
+  // Enable keyboard shortcuts
+  useKeyboardShortcuts();
 
   useEffect(() => {
     const applyFromUrl = () => {
       try {
         const url = new URL(window.location.href);
-        let p = url.searchParams.get('prefix') || '';
-        p = p.replace(/^\/+|\/+$/g, '');
-        setCurrentPrefix(p ? p + '/' : '');
+        let p = url.searchParams.get("prefix") || "";
+        p = p.replace(/^\/+|\/+$/g, "");
+        setCurrentPrefix(p ? p + "/" : "");
       } catch {}
     };
     applyFromUrl();
     const onPop = () => applyFromUrl();
-    window.addEventListener('popstate', onPop);
-    return () => window.removeEventListener('popstate', onPop);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
   }, [setCurrentPrefix]);
   return (
     <div className="flex h-screen overflow-hidden">
@@ -38,8 +44,13 @@ export default function Home() {
           </div>
         </section>
         <UploadManager />
+        <DeleteProgress />
       </main>
-      <BulkLinksModal open={linksModalOpen} onClose={hideLinksModal} links={modalLinks} />
+      <BulkLinksModal
+        open={linksModalOpen}
+        onClose={hideLinksModal}
+        links={modalLinks}
+      />
     </div>
   );
 }

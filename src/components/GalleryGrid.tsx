@@ -1,16 +1,27 @@
-'use client';
+"use client";
 
-import { useObjectStore } from '@/hooks/useObjectStore';
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useObjectStore } from "@/hooks/useObjectStore";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 
-import { ItemCard } from './ItemCard';
-import FolderCard from './FolderCard';
-import { Button } from './ui/Button';
-import { ArrowLeft } from 'lucide-react';
-import { traverseDataTransferItems } from '@/lib/dnd';
+import { ItemCard } from "./ItemCard";
+import FolderCard from "./FolderCard";
+import { Button } from "./ui/Button";
+import { ArrowLeft, Loader2 } from "lucide-react";
+import { traverseDataTransferItems } from "@/lib/dnd";
 
 export function GalleryGrid() {
-  const { objects, prefixes, fetchObjects, searchQuery, currentPrefix, startDnDUpload } = useObjectStore();
+  const {
+    objects,
+    prefixes,
+    fetchObjects,
+    searchQuery,
+    currentPrefix,
+    startDnDUpload,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    gridLimit,
+  } = useObjectStore();
   const { loadMoreObjects } = useObjectStore.getState() as any;
   const [dragOver, setDragOver] = useState(false);
   const [dragDepth, setDragDepth] = useState(0);
@@ -26,11 +37,17 @@ export function GalleryGrid() {
     const onIntersect: IntersectionObserverCallback = (entries) => {
       for (const entry of entries) {
         if (entry.isIntersecting) {
-          try { (useObjectStore.getState() as any).loadMoreObjects?.(); } catch {}
+          try {
+            (useObjectStore.getState() as any).loadMoreObjects?.();
+          } catch {}
         }
       }
     };
-    const io = new IntersectionObserver(onIntersect, { root: null, rootMargin: '800px 0px', threshold: 0 });
+    const io = new IntersectionObserver(onIntersect, {
+      root: null,
+      rootMargin: "800px 0px",
+      threshold: 0,
+    });
     io.observe(el);
     return () => io.disconnect();
   }, []);
@@ -38,8 +55,8 @@ export function GalleryGrid() {
   const onDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setDragDepth(prev => prev + 1);
-    if (e.dataTransfer.types?.includes('Files')) {
+    setDragDepth((prev) => prev + 1);
+    if (e.dataTransfer.types?.includes("Files")) {
       setDragOver(true);
     }
   }, []);
@@ -52,7 +69,7 @@ export function GalleryGrid() {
   const onDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setDragDepth(prev => {
+    setDragDepth((prev) => {
       const newDepth = prev - 1;
       if (newDepth === 0) {
         setDragOver(false);
@@ -61,65 +78,111 @@ export function GalleryGrid() {
     });
   }, []);
 
-  const onDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragOver(false);
-    try {
-      const items = e.dataTransfer.items;
-      const { files, dirs } = await traverseDataTransferItems(items);
-      if (files.length === 0) return;
-      await startDnDUpload(files as any, dirs);
-    } catch (err) {
-      console.error('Drop failed', err);
-    }
-  }, [startDnDUpload]);
+  const onDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragOver(false);
+      try {
+        const items = e.dataTransfer.items;
+        const { files, dirs } = await traverseDataTransferItems(items);
+        if (files.length === 0) return;
+        await startDnDUpload(files as any, dirs);
+      } catch (err) {
+        console.error("Drop failed", err);
+      }
+    },
+    [startDnDUpload]
+  );
 
   const filtered = useMemo(() => {
-    const q = (searchQuery || '').toLowerCase();
+    const q = (searchQuery || "").toLowerCase();
     if (!q) return objects;
-    return objects.filter((o: any) => (o.Key || '').toLowerCase().includes(q));
+    return objects.filter((o: any) => (o.Key || "").toLowerCase().includes(q));
   }, [objects, searchQuery]);
 
   return (
     <>
-    {currentPrefix ? (
-      <div className="mb-4">
-        <Button
-          variant="outline"
-          onClick={() => { try { window.history.back(); } catch {} }}
-          className="gap-2"
-          title="Back"
-        >
-          <ArrowLeft className="w-4 h-4" /> Back
-        </Button>
-      </div>
-    ) : null}
-    <div
-      id="grid-dropzone"
-      onDragEnter={onDragEnter}
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
-      className="relative"
-    >
-      {dragOver && (
-        <div className="absolute inset-0 z-10 rounded-xl border-2 border-dashed border-blue-400 bg-blue-50/70 flex items-center justify-center text-blue-700 font-medium">
-          Drop to upload into {currentPrefix || '/'}
+      {currentPrefix ? (
+        <div className="mb-4">
+          <Button
+            variant="outline"
+            onClick={() => {
+              try {
+                window.history.back();
+              } catch {}
+            }}
+            className="gap-2"
+            title="Back"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back
+          </Button>
         </div>
-      )}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-      {/* Folders first */}
-      {prefixes.map((p) => (
-        <FolderCard key={p} prefix={p.replace(/^\/+/, '')} />
-      ))}
-      {/* Files */}
-      {filtered.map((object: any) => (
-        <ItemCard key={object.Key} object={object} />
-      ))}
+      ) : null}
+      <div
+        id="grid-dropzone"
+        onDragEnter={onDragEnter}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+        className="relative"
+      >
+        {dragOver && (
+          <div className="absolute inset-0 z-10 rounded-xl border-2 border-dashed border-blue-400 bg-blue-50/70 flex items-center justify-center text-blue-700 font-medium">
+            Drop to upload into {currentPrefix || "/"}
+          </div>
+        )}
+
+        {/* Loading state */}
+        {isLoading && (
+          <div className="flex flex-col items-center justify-center py-20">
+            <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+            <p className="mt-4 text-gray-500 text-sm">Loading files...</p>
+          </div>
+        )}
+
+        {/* Content */}
+        {!isLoading && (
+          <div className="flex flex-col gap-1">
+            {/* File count tag */}
+            {(filtered.length > 0 || prefixes.length > 0) && (
+              <div className="flex items-center gap-2 mb-2 text-sm text-gray-500">
+                <span className="bg-gray-100 px-2 py-1 rounded-md">
+                  {prefixes.length > 0 && `${prefixes.length} folders`}
+                  {prefixes.length > 0 && filtered.length > 0 && " • "}
+                  {filtered.length > 0 && `${filtered.length} files`}
+                  {hasMore && " (more available)"}
+                </span>
+              </div>
+            )}
+            {/* Folders first */}
+            {prefixes.map((p) => (
+              <FolderCard key={p} prefix={p.replace(/^\/+/, "")} />
+            ))}
+            {/* Files */}
+            {filtered.map((object: any) => (
+              <ItemCard key={object.Key} object={object} />
+            ))}
+            {/* Empty state */}
+            {prefixes.length === 0 && filtered.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                <p className="text-lg">No files found</p>
+                <p className="text-sm mt-1">Drop files here to upload</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Load more indicator */}
+        {isLoadingMore && (
+          <div className="flex items-center justify-center py-4">
+            <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+            <span className="ml-2 text-sm text-gray-500">Loading more...</span>
+          </div>
+        )}
+
+        <div ref={sentinelRef} className="h-10"></div>
       </div>
-      <div ref={sentinelRef} className="h-10"></div>
-    </div>
     </>
   );
 }
