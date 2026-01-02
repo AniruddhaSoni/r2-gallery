@@ -2,8 +2,11 @@
 
 import { useState } from "react";
 import { Toast } from "./ui/Toast";
-import { Link2, Download, Trash2, FileIcon } from "lucide-react";
+import { Link2, Download, Trash2, FileIcon, Loader2 } from "lucide-react";
 import { useObjectStore } from "@/hooks/useObjectStore";
+
+// Get public bucket URL from env (available at build time)
+const BUCKET_URL = process.env.NEXT_PUBLIC_BUCKET_URL || process.env.CLOUDFLARE_BUCKET_URL;
 
 interface ItemCardProps {
   object: any;
@@ -12,31 +15,36 @@ interface ItemCardProps {
 export function ItemCard({ object }: ItemCardProps) {
   const [copied, setCopied] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const { selectedKeys, toggleSelect, deleteOne } = useObjectStore();
   const isSelected = selectedKeys.includes(object.Key);
 
   const fileName = object.Key?.split("/").pop() || object.Key;
   const fileSize = object.Size ? formatFileSize(object.Size) : "-";
 
+  // Build direct public URL
+  const getPublicUrl = () => {
+    if (BUCKET_URL) {
+      const normalizedBase = BUCKET_URL.replace(/\/$/, '');
+      const encodedKey = encodeURIComponent(object.Key).replace(/%2F/g, '/');
+      return `${normalizedBase}/${encodedKey}`;
+    }
+    return null;
+  };
+
   const copyLink = async () => {
-    const res = await fetch("/api/download", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.NEXT_PUBLIC_APP_PASSWORD}`,
-      },
-      body: JSON.stringify({ keys: [object.Key] }),
-    });
-    const data = (await res.json()) as { links?: string[] };
-    const url = Array.isArray(data?.links) ? data.links[0] : undefined;
-    if (url) {
-      navigator.clipboard.writeText(url);
+    // Try direct public URL first
+    const publicUrl = getPublicUrl();
+    if (publicUrl) {
+      await navigator.clipboard.writeText(publicUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
       return;
     }
+
+    // Fallback to signed URL
     try {
-      const alt = await fetch("/api/objects/signed-get", {
+      const res = await fetch("/api/objects/signed-get", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -44,59 +52,68 @@ export function ItemCard({ object }: ItemCardProps) {
         },
         body: JSON.stringify({ key: object.Key }),
       });
-      const { url: signed } = (await alt.json()) as { url?: string };
+      const { url: signed } = (await res.json()) as { url?: string };
       if (signed) {
-        navigator.clipboard.writeText(signed);
+        await navigator.clipboard.writeText(signed);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       }
-    } catch {}
+    } catch (err) {
+      console.error("Failed to copy link:", err);
+    }
   };
 
   const downloadFile = async () => {
-    const filename = object.Key?.split("/").pop() || "file";
+    if (isDownloading) return;
+    setIsDownloading(true);
+    
+    const filename = fileName;
+    const publicUrl = getPublicUrl();
+
     try {
-      const sameOrigin = `/api/download/file?key=${encodeURIComponent(
-        object.Key
-      )}`;
-      const fileResp = await fetch(sameOrigin, {
-        headers: {
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_APP_PASSWORD}`,
-        },
-      });
-      if (!fileResp.ok) throw new Error("fetch-failed");
-      const blob = await fileResp.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = objectUrl;
-      anchor.download = filename;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(objectUrl);
-    } catch {
-      try {
-        const res = await fetch("/api/objects/signed-get", {
-          method: "POST",
+      if (publicUrl) {
+        // Client-side download from public URL
+        const response = await fetch(publicUrl);
+        if (!response.ok) throw new Error("fetch-failed");
+        
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = objectUrl;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(objectUrl);
+      } else {
+        // Fallback: use same-origin API endpoint
+        const sameOrigin = `/api/download/file?key=${encodeURIComponent(object.Key)}`;
+        const fileResp = await fetch(sameOrigin, {
           headers: {
-            "Content-Type": "application/json",
             Authorization: `Bearer ${process.env.NEXT_PUBLIC_APP_PASSWORD}`,
           },
-          body: JSON.stringify({ key: object.Key }),
         });
-        const data = (await res.json()) as { url?: string };
-        const fallbackUrl = data?.url;
-        if (fallbackUrl) {
-          const a = document.createElement("a");
-          a.href = fallbackUrl;
-          a.download = filename;
-          a.target = "_blank";
-          a.rel = "noopener";
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-        }
-      } catch {}
+        if (!fileResp.ok) throw new Error("fetch-failed");
+        
+        const blob = await fileResp.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = objectUrl;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(objectUrl);
+      }
+    } catch (err) {
+      console.error("Download failed:", err);
+      // Last resort: open in new tab
+      const publicUrl = getPublicUrl();
+      if (publicUrl) {
+        window.open(publicUrl, "_blank");
+      }
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -162,8 +179,13 @@ export function ItemCard({ object }: ItemCardProps) {
           }}
           className="p-1.5 rounded-md hover:bg-gray-200 transition-colors"
           title="Download"
+          disabled={isDownloading}
         >
-          <Download className="w-4 h-4 text-gray-500" />
+          {isDownloading ? (
+            <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+          ) : (
+            <Download className="w-4 h-4 text-gray-500" />
+          )}
         </button>
         <button
           onClick={(e) => {
