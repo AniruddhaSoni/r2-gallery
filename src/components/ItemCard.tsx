@@ -6,7 +6,8 @@ import { Link2, Download, Trash2, FileIcon, Loader2 } from "lucide-react";
 import { useObjectStore } from "@/hooks/useObjectStore";
 
 // Get public bucket URL from env (available at build time)
-const BUCKET_URL = process.env.NEXT_PUBLIC_BUCKET_URL || process.env.CLOUDFLARE_BUCKET_URL;
+const BUCKET_URL =
+  process.env.NEXT_PUBLIC_BUCKET_URL || process.env.CLOUDFLARE_BUCKET_URL;
 
 interface ItemCardProps {
   object: any;
@@ -25,8 +26,8 @@ export function ItemCard({ object }: ItemCardProps) {
   // Build direct public URL
   const getPublicUrl = () => {
     if (BUCKET_URL) {
-      const normalizedBase = BUCKET_URL.replace(/\/$/, '');
-      const encodedKey = encodeURIComponent(object.Key).replace(/%2F/g, '/');
+      const normalizedBase = BUCKET_URL.replace(/\/$/, "");
+      const encodedKey = encodeURIComponent(object.Key).replace(/%2F/g, "/");
       return `${normalizedBase}/${encodedKey}`;
     }
     return null;
@@ -66,7 +67,7 @@ export function ItemCard({ object }: ItemCardProps) {
   const downloadFile = async () => {
     if (isDownloading) return;
     setIsDownloading(true);
-    
+
     const filename = fileName;
     const publicUrl = getPublicUrl();
 
@@ -75,7 +76,7 @@ export function ItemCard({ object }: ItemCardProps) {
         // Client-side download from public URL
         const response = await fetch(publicUrl);
         if (!response.ok) throw new Error("fetch-failed");
-        
+
         const blob = await response.blob();
         const objectUrl = URL.createObjectURL(blob);
         const anchor = document.createElement("a");
@@ -87,14 +88,16 @@ export function ItemCard({ object }: ItemCardProps) {
         URL.revokeObjectURL(objectUrl);
       } else {
         // Fallback: use same-origin API endpoint
-        const sameOrigin = `/api/download/file?key=${encodeURIComponent(object.Key)}`;
+        const sameOrigin = `/api/download/file?key=${encodeURIComponent(
+          object.Key
+        )}`;
         const fileResp = await fetch(sameOrigin, {
           headers: {
             Authorization: `Bearer ${process.env.NEXT_PUBLIC_APP_PASSWORD}`,
           },
         });
         if (!fileResp.ok) throw new Error("fetch-failed");
-        
+
         const blob = await fileResp.blob();
         const objectUrl = URL.createObjectURL(blob);
         const anchor = document.createElement("a");
