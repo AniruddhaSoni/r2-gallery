@@ -2,8 +2,7 @@
 
 ![R2 Gallery Demo](https://raw.githubusercontent.com/sjackp/r2-gallery/main/demos.gif)
 
-
-A minimalist web UI to manage a Cloudflare R2 bucket. 
+A minimalist web UI to manage a Cloudflare R2 bucket.
 Easily drag & drop to upload files and or folders.
 Bulk copy links, single click downloads.
 
@@ -40,6 +39,7 @@ Open `http://localhost:3423`.
 Environment variables (see `env.example`):
 
 ### Cloudflare R2
+
 - `CLOUDFLARE_ACCOUNT_ID` (required) — your Cloudflare account ID
 - `CLOUDFLARE_ACCESS_KEY` (required) — R2 access key
 - `CLOUDFLARE_SECRET_ACCESS_KEY` (required) — R2 secret access key
@@ -49,11 +49,13 @@ Environment variables (see `env.example`):
 - `URL_TTL_SECONDS` (optional, default `900`) — signed URL expiry
 
 ### Authentication
+
 - `AUTH_SECRET` (required) — NextAuth secret, generate with `npx auth secret`
 - `BASIC_AUTH_USER` (required) — login username
 - `BASIC_AUTH_PASSWORD` (required) — login password
 
 ### API
+
 - `APP_PASSWORD` (required) — bearer token enforced by `/api/*` middleware
 - `NEXT_PUBLIC_APP_PASSWORD` (optional) — dev convenience to call APIs from the browser
 - `NEXT_PUBLIC_THUMBNAIL_URL` (optional) — public URL to your thumbnail Worker endpoint (e.g., `https://thumbs.example.com/thumb`)
@@ -154,4 +156,3 @@ See `CONTRIBUTING.md` for setup, coding style, and how to propose changes.
 ## License
 
 MIT — see `LICENSE`.
-

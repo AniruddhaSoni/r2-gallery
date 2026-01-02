@@ -5,8 +5,14 @@
   "scripts": {
     "dev": "next dev -p 3423",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "next start -p 3423",
+    "lint": "next lint",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop r2-gallery",
+    "pm2:restart": "pm2 restart r2-gallery",
+    "pm2:delete": "pm2 delete r2-gallery",
+    "pm2:logs": "pm2 logs r2-gallery",
+    "deploy": "npm run build && npm run pm2:restart"
   },
   "keywords": [
     "cloudflare",

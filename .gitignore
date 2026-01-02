@@ -12,6 +12,10 @@ out/
 build/
 dist/
 
+# PM2 logs
+logs/*.log
+!logs/.gitkeep
+
 # Environment variables
 .env
 .env.local
