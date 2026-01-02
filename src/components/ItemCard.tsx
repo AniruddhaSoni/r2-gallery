@@ -5,9 +5,8 @@ import { Toast } from "./ui/Toast";
 import { Link2, Download, Trash2, FileIcon, Loader2 } from "lucide-react";
 import { useObjectStore } from "@/hooks/useObjectStore";
 
-// Get public bucket URL from env (available at build time)
-const BUCKET_URL =
-  process.env.NEXT_PUBLIC_BUCKET_URL || process.env.CLOUDFLARE_BUCKET_URL;
+// Get public bucket URL from env (only NEXT_PUBLIC_ vars are available on client)
+const BUCKET_URL = process.env.NEXT_PUBLIC_BUCKET_URL;
 
 interface ItemCardProps {
   object: any;
