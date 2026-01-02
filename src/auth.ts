@@ -30,9 +30,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   pages: {
     signIn: "/login",
   },
-  callbacks: {
-    authorized: async ({ auth }) => {
-      return !!auth;
-    },
+  session: {
+    strategy: "jwt",
   },
+  trustHost: true,
 });
